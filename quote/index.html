@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘의 문장</title>
+<!--
+  노션 /embed 용 명언 위젯. 외부 파일·외부 요청 없음.
+  주소 뒤 옵션
+    ?theme=light 또는 ?theme=dark   기본은 기기 설정을 따른다
+    ?cat=law,people,proverb         보여 줄 묶음(헌법·명언·속담). 기본은 전부
+  예) .../quote/?theme=dark&cat=law,proverb
+  하루 동안은 누구에게나 같은 문장으로 시작하고, [다음]을 누르면 넘어간다.
+-->
+<style>
+:root {
+  --page: #ffffff;
+  --card: #fbf7f2;
+  --ink: #2b2422;
+  --soft: #74665e;
+  --accent: #8a2a1e;
+  --rule: #e6ddd3;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #191919;
+    --card: #211d1c;
+    --ink: #ece4dc;
+    --soft: #a99d94;
+    --accent: #e08a7c;
+    --rule: #3b3431;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #191919;
+  --card: #211d1c;
+  --ink: #ece4dc;
+  --soft: #a99d94;
+  --accent: #e08a7c;
+  --rule: #3b3431;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  box-sizing: border-box;
+  background: var(--page);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  box-sizing: border-box;
+  padding: clamp(16px, 4vw, 28px) clamp(18px, 5vw, 36px);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+}
+.head {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: .14em;
+  color: var(--accent);
+}
+figure, blockquote { margin: 0; }
+.serif { font-family: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", "Batang", "바탕", serif; }
+.text {
+  margin: 0;
+  font-size: calc(clamp(17px, 3.4vw + 4px, 27px) * var(--scale, 1));
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  white-space: pre-line;
+}
+.orig {
+  margin: 6px 0 0;
+  font-size: 14px;
+  letter-spacing: .08em;
+  color: var(--soft);
+}
+.orig:empty { display: none; }
+figcaption {
+  margin-top: 16px;
+  padding-right: 64px;
+  font-size: 13px;
+  color: var(--soft);
+}
+#quote { transition: opacity .18s ease; }
+#quote.out { opacity: 0; }
+#next {
+  position: absolute;
+  right: 14px;
+  bottom: clamp(12px, 3vw, 22px);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+#next:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { #quote { transition: none; } }
+</style>
+</head>
+<body>
+<main class="card">
+  <p class="head">§ 오늘의 문장</p>
+  <figure id="quote" aria-live="polite">
+    <blockquote>
+      <p class="text serif" id="text"></p>
+      <p class="orig serif" id="orig"></p>
+    </blockquote>
+    <figcaption id="by"></figcaption>
+  </figure>
+  <button type="button" id="next">다음 ›</button>
+</main>
+<script>
+const QUOTES = [
+  ["law", "모든 국민은 사생활의 비밀과 자유를 침해받지 아니한다.", "대한민국헌법 제17조"],
+  ["proverb", "백지장도 맞들면 낫다.", "속담"],
+  ["people", "사람마다 쉽게 익혀 날마다 쓰는 데 편하게 하고자 할 따름이다.", "세종, 『훈민정음』 서문", "欲使人人易習 便於日用耳"],
+  ["proverb", "돌다리도 두들겨 보고 건너라.", "속담"],
+  ["law", "모든 국민은 법 앞에 평등하다.", "대한민국헌법 제11조 제1항"],
+  ["people", "하루라도 책을 읽지 않으면 입안에 가시가 돋는다.", "안중근 유묵", "一日不讀書 口中生荊棘"],
+  ["proverb", "구슬이 서 말이라도 꿰어야 보배.", "속담"],
+  ["people", "죽고자 하면 살고, 살고자 하면 죽는다.", "이순신, 『난중일기』", "必死則生 必生則死"],
+  ["law", "모든 국민은 인간으로서의 존엄과 가치를 가지며, 행복을 추구할 권리를 가진다.", "대한민국헌법 제10조"],
+  ["proverb", "천 리 길도 한 걸음부터.", "속담"],
+  ["people", "오직 한없이 가지고 싶은 것은 높은 문화의 힘이다.", "김구, 「나의 소원」"],
+  ["proverb", "급할수록 돌아가라.", "속담"],
+  ["law", "대한민국의 주권은 국민에게 있고, 모든 권력은 국민으로부터 나온다.", "대한민국헌법 제1조 제2항"],
+  ["people", "사람이 이 세상에 태어나 학문을 하지 않으면 사람다운 사람이 될 수 없다.", "이이, 『격몽요결』", "人生斯世 非學問 無以爲人"],
+  ["proverb", "아는 길도 물어 가라.", "속담"],
+  ["people", "죽는 날까지 하늘을 우러러\n한 점 부끄럼이 없기를", "윤동주, 「서시」"],
+  ["law", "모든 국민은 통신의 비밀을 침해받지 아니한다.", "대한민국헌법 제18조"],
+  ["proverb", "시작이 반이다.", "속담"],
+  ["people", "지금 신에게는 아직 열두 척의 배가 있습니다.", "이순신", "今臣戰船 尙有十二"],
+  ["proverb", "티끌 모아 태산.", "속담"],
+  ["law", "모든 국민은 학문과 예술의 자유를 가진다.", "대한민국헌법 제22조 제1항"],
+  ["people", "이익을 보면 의로움을 생각하고, 위태로움을 보면 목숨을 바친다.", "안중근 유묵", "見利思義 見危授命"],
+  ["proverb", "가는 말이 고와야 오는 말이 곱다.", "속담"],
+  ["proverb", "공든 탑이 무너지랴.", "속담"],
+  ["proverb", "우물을 파도 한 우물을 파라.", "속담"],
+];
+
+const params = new URLSearchParams(location.search);
+const theme = params.get("theme");
+if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+
+const cats = (params.get("cat") || "").split(",").map(s => s.trim()).filter(Boolean);
+const picked = QUOTES.filter(q => cats.includes(q[0]));
+const list = picked.length ? picked : QUOTES;
+
+// 기기 시각 기준 날짜 번호. 같은 날에는 누구에게나 같은 문장이 먼저 나온다
+const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+let i = today % list.length;
+
+const $ = id => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function show() {
+  const [, text, by, orig = ""] = list[i];
+  $("text").textContent = text;
+  $("text").style.setProperty("--scale", text.length > 48 ? 0.8 : text.length > 30 ? 0.9 : 1);
+  $("orig").textContent = orig;
+  $("by").textContent = "— " + by;
+}
+
+$("next").addEventListener("click", () => {
+  i = (i + 1) % list.length;
+  if (reduce) return show();
+  $("quote").classList.add("out");
+  setTimeout(() => { show(); $("quote").classList.remove("out"); }, 180);
+});
+
+show();
+</script>
+</body>
+</html>
